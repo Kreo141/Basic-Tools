@@ -4,38 +4,47 @@ const path = require('path')
 const convertsJsonPath = path.resolve(__dirname, "../data/converts.json")
 const convertedFilePath = path.resolve(__dirname, "../uploads/converted/")
 
-const oneHour = 60 * 60 * 1000
+const appConfig = path.resolve(__dirname, '../configs/app.json')
 
-let hasChanges = false
-let deleteFilename = null
-let intervalRunning = false
+async function start(){
+    const appConfigRaw = await fsSync.readFile(appConfig, 'utf8')
+    const appConfigJsonObject = JSON.parse(appConfigRaw)
 
-const interval = setInterval(async () => {
-    if(intervalRunning) return
-    intervalRunning = true
-    try{
-        const convertsRaw = await fsSync.readFile(convertsJsonPath, 'utf8')
-        const convertsJsonObject = JSON.parse(convertsRaw)
+    const hourExpiry = 60 * 60 * appConfigJsonObject.ExportedFileExpiry
 
-        const filenames = Object.keys(convertsJsonObject)
-        
-        filenames.forEach(filename => {
-            if(Date.now() - convertsJsonObject[filename].age > oneHour){
-                console.log("File Deleted")
-                delete convertsJsonObject[filename]
-                deleteFilename = filename
-                fsSync.unlink(path.join(convertedFilePath, deleteFilename))
-                hasChanges = true
+    let hasChanges = false
+    let intervalRunning = false
+
+    const interval = setInterval(async () => { console.log("Actively Monitoring Expired file/s")
+        if(intervalRunning) return
+        intervalRunning = true
+        try{
+            const convertsRaw = await fsSync.readFile(convertsJsonPath, 'utf8')
+            const convertsJsonObject = JSON.parse(convertsRaw)
+
+            const filenames = Object.keys(convertsJsonObject)
+
+            //used for of in this because forEach does not wait for async operations
+            for(const filename of filenames){
+                if(Date.now() - convertsJsonObject[filename].age > hourExpiry){
+                    console.log("File Deleted")
+                    delete convertsJsonObject[filename]
+                    await fsSync.unlink(path.join(convertedFilePath, filename))
+                    hasChanges = true
+                }
             }
 
             if(hasChanges){
-                fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2))
+                await fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2))
+                hasChanges = false
             }
-        });
-    }catch(error){
-        console.log(error)
-        clearInterval(interval)
-    } finally {
-        intervalRunning = false
-    }
-}, 1000)
+        }catch(error){
+            console.log(error)
+            clearInterval(interval)
+        } finally {
+            intervalRunning = false
+        }
+    }, appConfigJsonObject.GlobalJobInterval)
+}
+
+start()
