@@ -40,7 +40,7 @@ const serverLocation = true ? serverDev : serverProd;
 // ==========================================
 // MAIN CONTAINER
 // ==========================================
-function FileConverter() {
+function FileConverter({ UserKey }) {
   const [showFileModal, setShowFileModal] = useState(false);
   const [useFileType, setUseFileType] = useState("file");
 
@@ -79,6 +79,7 @@ function FileConverter() {
 
         {showFileModal && (
           <ModalController
+            UserKey={UserKey}
             useFileType={useFileType}
             onClose={() => setShowFileModal(false)}
           />
@@ -126,7 +127,7 @@ function FileTypeSelect({ fileType, logoSrc, supportedFormat, onSelect }) {
 // ==========================================
 // MODAL STATE CONTROLLER & WORKFLOW
 // ==========================================
-function ModalController({ useFileType, onClose }) {
+function ModalController({ UserKey, useFileType, onClose }) {
   const convertKey = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [currentFormat, setCurrentFormat] = useState("");
@@ -215,6 +216,7 @@ function ModalController({ useFileType, onClose }) {
           convertKey: convertKey.current,
           originalFormat: currentFormat,
           toConvertTo: selectedConversionFormat,
+          OwnerKey: UserKey
         }),
       });
 
@@ -504,6 +506,8 @@ function ConvertStep({
 }
 
 function App() {
+  const UserKey = localStorage.getItem('UserKey') ? localStorage.getItem('UserKey') : localStorage.setItem("UserKey", crypto.randomUUID())
+
   return(
     <>
       <div className="nav">
@@ -516,7 +520,7 @@ function App() {
 
         <button className="settings-btn">Settings</button>
       </div>
-      <FileConverter />
+      <FileConverter UserKey={UserKey} />
     </>
   )
 }

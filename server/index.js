@@ -1,13 +1,21 @@
+require('./jobs/cleanupConverts')
+
 const express = require('express')
 const cors = require('cors')
 const path = require('path')
 const fs = require('fs')
+const fsSync = require('fs/promises')
 const multer = require('multer')
 const ffmpeg = require('fluent-ffmpeg')
 const { exec } = require('child_process')
 const crypto = require('crypto')
+const appConfig = require('./configs/app.json')
 
 const app = express()
+app.use(cors())
+app.use(express.json())
+
+const convertsJsonPath = path.resolve(__dirname, './data/converts.json')
 
 const isDev = true
 
@@ -17,9 +25,6 @@ const magickCmd = isDev ? "magick" : "convert"
 if(isDev){
     ffmpeg.setFfmpegPath('E:/DevEnv/Projects/MajorProjects/Basic-Tools/ffmpeg-2026-05-13-git-a327bc0561-essentials_build/bin/ffmpeg.exe')
 }
-
-app.use(cors())
-app.use(express.json())
 
 const uploadDir = './uploads/toConvert';
 if (!fs.existsSync(uploadDir)){
@@ -42,9 +47,7 @@ const upload = multer({ storage });
 
 
 //* Init Important Variables
-const conversionProgress = {} 
 const conversionTask = {}
-
 
 //* Uploading Routes
 app.post('/convert/upload', upload.single('file'), (req, res) => {
@@ -104,7 +107,7 @@ const presets = {
 app.post('/convert/Video', (req, res) => {
     console.log('Video Conversion Request')
 
-    const { convertKey, originalFormat, toConvertTo } = req.body
+    const { convertKey, originalFormat, toConvertTo, OwnerKey } = req.body
 
     const fileID = conversionTask[convertKey].fileID
     console.log(fileID)
@@ -126,11 +129,22 @@ app.post('/convert/Video', (req, res) => {
             console.log(progress)
             conversionTask[convertKey].progress = progress.percent || 0
         })
-        .on('end', () => {
+        .on('end', async () => {
             console.log('Conversion done')
 
             conversionTask[convertKey].progress = 100
             conversionTask[convertKey].convertedFileID = `${fileID}.${toConvertTo}`
+
+            const rawConvertsData = await fsSync.readFile(convertsJsonPath, 'utf8')
+
+            const convertsJsonObject = JSON.parse(rawConvertsData)
+
+            convertsJsonObject[`${fileID}.${toConvertTo}`] = {
+                "OwnerKey": OwnerKey,
+                "age": Date.now()
+            }
+
+            fs.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
             res.json({
                 message: "File Converted!",
             })
@@ -149,7 +163,7 @@ app.post('/convert/Video', (req, res) => {
 app.post('/convert/Audio', (req, res) => {
     console.log('Audio Conversion Request')
 
-    const { convertKey, originalFormat, toConvertTo } = req.body
+    const { convertKey, originalFormat, toConvertTo, OwnerKey } = req.body
 
     const fileID = conversionTask[convertKey].fileID
     console.log(fileID)
@@ -166,10 +180,21 @@ app.post('/convert/Audio', (req, res) => {
 
             conversionTask[convertKey].progress = progress.percent || 0
         })
-        .on('end', () => {
+        .on('end', async () => {
             console.log('Conversion done')
             conversionTask[convertKey].progress = 100
             conversionTask[convertKey].convertedFileID = `${fileID}.${toConvertTo}`
+
+            const rawConvertsData = await fsSync.readFile(convertsJsonPath, 'utf8')
+
+            const convertsJsonObject = JSON.parse(rawConvertsData)
+
+            convertsJsonObject[`${fileID}.${toConvertTo}`] = {
+                "OwnerKey": OwnerKey,
+                "age": Date.now()
+            }
+
+            fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
             res.json({
                 message: "File Converted!",
             })
@@ -271,7 +296,7 @@ app.get('/convert/download/:convertKey', (req, res) => {
 })
 
 app.get('/convert/deleteOriginalFile/:convertKey', (req, res) => {
-    fs.unlink(`./uploads/toConvert/${conversionTask[req.params.convertKey].fileID}`, (err) => {
+    fs.unlink(`./uploads/toConvert/${conversionTask[req.params.convertKey].fileID }`, (err) => {
         if(err){
             console.log("Failed to delete original file: ", err)
             return
@@ -281,8 +306,7 @@ app.get('/convert/deleteOriginalFile/:convertKey', (req, res) => {
     })
 })
 
-
-const PORT = 5001
+const PORT = appConfig.PORT
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on 0.0.0.0:${PORT}`)

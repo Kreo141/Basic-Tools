@@ -1,6 +1,7 @@
 # Dependencies
 client/node_modules
 server/node_modules
+node_modules/
 
 # Environment variables
 client/.env
@@ -35,3 +36,5 @@ server/uploads/
 ffmpeg/
 
 ffmpeg-2026-05-13-git-a327bc0561-essentials_build/
+
+start.sh
