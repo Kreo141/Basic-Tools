@@ -1,5 +1,3 @@
-require('./jobs/cleanupConverts')
-
 const express = require('express')
 const cors = require('cors')
 const path = require('path')
@@ -16,6 +14,20 @@ app.use(cors())
 app.use(express.json())
 
 const convertsJsonPath = path.resolve(__dirname, './data/converts.json')
+
+// Init Files
+if(!fs.existsSync(convertsJsonPath)){
+    console.log("Creating File: ", convertsJsonPath)
+    fs.writeFile(convertsJsonPath, "{}", (err) => {
+        if(err) {
+            console.error(err)
+            return
+        }
+    })
+}
+
+
+require('./jobs/cleanupConverts')
 
 const isDev = true
 
