@@ -26,7 +26,6 @@ if(!fs.existsSync(convertsJsonPath)){
     })
 }
 
-
 require('./jobs/cleanupConverts')
 
 const isDev = true
