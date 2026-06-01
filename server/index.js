@@ -206,7 +206,8 @@ app.post('/convert/Audio', (req, res) => {
                 "age": Date.now()
             }
 
-            fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
+            await fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
+
             res.json({
                 message: "File Converted!",
             })
@@ -223,11 +224,11 @@ app.post('/convert/Audio', (req, res) => {
 
 app.post('/convert/Image', (req, res) => {
     console.log("Image Conversion Request")
-    const { convertKey, toConvertTo } = req.body
+    const { convertKey, toConvertTo, OwnerKey } = req.body
     const fileID = conversionTask[convertKey].fileID
     exec(
         `${magickCmd} "./uploads/toConvert/${fileID}" "./uploads/converted/${fileID}.${toConvertTo}"`,
-        (error) => {
+        async (error) => {
             if(error){
                 console.log(error)
                 return res.status(500).json({
@@ -237,6 +238,18 @@ app.post('/convert/Image', (req, res) => {
 
             conversionTask[convertKey].progress = 100
             conversionTask[convertKey].convertedFileID = `${fileID}.${toConvertTo}`
+
+            const rawConvertsData = await fsSync.readFile(convertsJsonPath, 'utf8')
+
+            const convertsJsonObject = JSON.parse(rawConvertsData)
+
+            convertsJsonObject[`${fileID}.${toConvertTo}`] = {
+                "OwnerKey": OwnerKey,
+                "age": Date.now()
+            }
+
+            await fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
+
             res.json({
                 message: "File Converted"
             })
@@ -246,12 +259,12 @@ app.post('/convert/Image', (req, res) => {
 
 app.post('/convert/Document', (req, res) => {
     console.log("Document Conversion Request")
-    const { convertKey, toConvertTo} = req.body
+    const { convertKey, toConvertTo, OwnerKey} = req.body
     const fileID = conversionTask[convertKey].fileID
 
     exec(
         `"${libreofficeLocation}${sofficeCmd}" --headless --convert-to ${toConvertTo} --outdir ./uploads/converted/ ./uploads/toConvert/${fileID} `,
-        (error) => {
+        async (error) => {
             if(error){
                 console.log(error.message)
                 return res.status(500).json({
@@ -265,6 +278,17 @@ app.post('/convert/Document', (req, res) => {
             
             conversionTask[convertKey].progress = 100
             conversionTask[convertKey].convertedFileID = `${newFileName}`
+
+            const rawConvertsData = await fsSync.readFile(convertsJsonPath, 'utf8')
+
+            const convertsJsonObject = JSON.parse(rawConvertsData)
+
+            convertsJsonObject[`${fileID}.${toConvertTo}`] = {
+                "OwnerKey": OwnerKey,
+                "age": Date.now()
+            }
+
+            await fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
             res.json({
                 message: "File Converted!"
             })
@@ -289,11 +313,18 @@ app.get((req, res) => {
 
 //* Download Converted File
 app.get('/convert/download/:convertKey', (req, res) => {
-    const filePath = `./uploads/converted/${conversionTask[req.params.convertKey].convertedFileID}`
-    console.log(filePath)
-    console.log(req.params.convertKey)
+    const task = conversionTask[req.params.convertKey]
 
-    if(!filePath || !conversionTask[req.params.convertKey]){
+    if(!task){
+        return res.status(404).json({
+            message: 'Hmmm Invalid Key!'
+        })
+    }
+
+    const filePath = `./uploads/converted/${task.convertedFileID}`
+    console.log(filePath)
+
+    if(!fs.existsSync(filePath)){
         return res.status(404).json({
             message: "Converted file not found",
             key: req.params.convertKey
@@ -303,7 +334,7 @@ app.get('/convert/download/:convertKey', (req, res) => {
     res.download(filePath, (err) => {
         if(err){
             console.log(err)
-            res.status.send('File download failed')
+            res.status(500).send('File download failed')
         }   
     })
 })
