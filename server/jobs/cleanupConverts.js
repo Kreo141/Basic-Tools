@@ -10,7 +10,7 @@ let lastModified = 0
 async function hasFileChanged(){
     const stat = await fsSync.stat(convertsJsonPath)
 
-    if(stat.mtimeMs !== lastModified){
+    if(stat.mtimeMs !== lastModified || stat.size === 0){
         lastModified = stat.mtimeMs
         return true
     }
@@ -31,10 +31,14 @@ async function start(){
         if(intervalRunning) return
         intervalRunning = true
 
-        if(await hasFileChanged()){ console.log("Actively Monitoring Expired file/s")
+        if(await hasFileChanged()){ console.log("cleanupConverts.js: Actively Monitoring Expired file/s")
             try{
                 const convertsRaw = await fsSync.readFile(convertsJsonPath, 'utf8')
                 const convertsJsonObject = JSON.parse(convertsRaw)
+
+                if(Object.keys(convertsJsonObject).length === 0) {
+                    console.log("There's no file to monitor")
+                }
 
                 const filenames = Object.keys(convertsJsonObject)
 

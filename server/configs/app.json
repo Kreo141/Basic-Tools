@@ -1,8 +1,6 @@
 {
     "PORT": 5001,
-    "ExportedFileExpiry": 1,
-
-
+    "ExportedFileExpiry": 1000, 
 
     "GlobalJobInterval": 1000
 }

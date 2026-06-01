@@ -156,7 +156,7 @@ app.post('/convert/Video', (req, res) => {
                 "age": Date.now()
             }
 
-            fs.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
+            await fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
             res.json({
                 message: "File Converted!",
             })
@@ -258,7 +258,8 @@ app.post('/convert/Document', (req, res) => {
                     message: error.message
                 })
             }
-
+            
+            console.log("File Converted")
             const slice = fileID.split('.')
             const newFileName = `${slice[0]}.${toConvertTo}`
             

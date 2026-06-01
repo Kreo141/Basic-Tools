@@ -1,0 +1,38 @@
+[
+    {
+        "name" : "Image",
+        "logoSrc" : "https://img.icons8.com/sf-regular-filled/1200/image.jpg",
+        "supportedFormat" : ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tif", "tiff", "ico", "heic", "avif"]
+    },
+    {
+        "name" : "Video",
+        "logoSrc" : "https://png.pngtree.com/png-vector/20250831/ourmid/pngtree-flat-clapperboard-video-icon-black-and-white-striped-top-with-simple-png-image_17345655.webp",
+        "supportedFormat" : ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"]
+    },
+    {
+        "name" : "Audio",
+        "logoSrc" : "https://upload.wikimedia.org/wikipedia/commons/2/21/Speaker_Icon.svg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original",
+        "supportedFormat" : ["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma", "opus", "amr"]
+    },
+    {
+        "name" : "Document",
+        "logoSrc" : "./assets/icons/DocumentIcon.svg",
+        "supportedFormat" : {
+            "docx": ["pdf", "doc", "odt", "rtf", "txt", "html", "epub"],
+            "doc": ["pdf", "docx", "odt", "rtf", "txt", "html"],
+            "odt": ["pdf", "docx", "doc", "rtf", "txt", "html", "epub"],
+
+            "xlsx": ["pdf", "xls", "ods", "csv", "html"],
+            "xls": ["pdf", "xlsx", "ods", "csv"],
+            "ods": ["pdf", "xlsx", "xls", "csv"],
+
+            "pptx": ["pdf", "ppt", "odp", "html", "png", "jpg"],
+            "ppt": ["pdf", "pptx", "odp"],
+            "odp": ["pdf", "pptx", "ppt"],
+
+            "txt": ["pdf", "odt", "docx"],
+            "html": ["pdf", "docx", "odt"]
+        }
+    }
+]
+

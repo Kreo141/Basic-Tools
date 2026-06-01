@@ -31,7 +31,19 @@ const getFileExtension = (filename) => {
 const documentSupportedFormatsRaw = conversionTypes.find(
   (item) => item.name === "Document",
 ).supportedFormat;
+
 const documentSupportedFormats = Object.keys(documentSupportedFormatsRaw);
+
+const getSupportedFormatsRaw = (fileType) => {
+    const fileSupportedFormatsRaw = conversionTypes.find(
+        (item) => item.name === fileType
+    ).supportedFormat
+
+    return fileSupportedFormatsRaw
+}
+
+const getSupportedFormats = (fileType) => Object.keys(getSupportedFormatsRaw(fileType))
+
 
 const serverDev = "http://192.168.100.12:5001";
 const serverProd = "http://server:5001";
@@ -48,33 +60,17 @@ function FileConverter({ UserKey }) {
     <div className="page file-converter-root">
       <div className="file-converter-wrapper">
         {conversionTypes.map((type) => {
-          if (type.name == "Document") {
             return (
               <FileTypeSelect
                 key={type.name}
                 fileType={type.name}
-                logoSrc={type.logoSrc}
-                supportedFormat={documentSupportedFormats}
+                supportedFormat={getSupportedFormats(type.name)}
                 onSelect={(selectedType) => {
-                  setUseFileType(selectedType);
-                  setShowFileModal(true);
-                }}
+                    setUseFileType(selectedType);
+                    setShowFileModal(true);
+              }}
               />
             );
-          }
-
-          return (
-            <FileTypeSelect
-              key={type.name}
-              fileType={type.name}
-              logoSrc={type.logoSrc}
-              supportedFormat={type.supportedFormat}
-              onSelect={(selectedType) => {
-                setUseFileType(selectedType);
-                setShowFileModal(true);
-              }}
-            />
-          );
         })}
 
         {showFileModal && (
@@ -92,7 +88,7 @@ function FileConverter({ UserKey }) {
 // ==========================================
 // FILE TYPE CARD COMPONENT
 // ==========================================
-function FileTypeSelect({ fileType, logoSrc, supportedFormat, onSelect }) {
+function FileTypeSelect({ fileType, supportedFormat, onSelect }) {
   const IconComponent = FileIcons[fileType]
 
   const visibleFormats = supportedFormat.slice(0, 5).join(", ");
@@ -146,20 +142,15 @@ function ModalController({ UserKey, useFileType, onClose }) {
   );
   let acceptFormats = "";
 
-  if (useFileType === "Document") {
-    acceptFormats = selectedType
-      ? Object.keys(
-          conversionTypes.find((item) => item.name === "Document")
-            .supportedFormat,
-        )
-          .map((f) => `.${f}`)
-          .join(",")
-      : "";
-  } else {
-    acceptFormats = selectedType
-      ? selectedType.supportedFormat.map((f) => `.${f}`).join(",")
-      : "";
-  }
+  acceptFormats = selectedType
+    ? Object.keys(
+        conversionTypes.find((item) => item.name === useFileType)
+          .supportedFormat,
+      )
+        .map((f) => `.${f}`)
+        .join(",")
+    : "";
+
 
   useEffect(() => {
     if (!isConverting || !convertKey.current) return;
@@ -289,9 +280,7 @@ function ModalController({ UserKey, useFileType, onClose }) {
           fileName={selectedFile?.name}
           currentFormat={currentFormat}
           supportedFormats={
-            selectedType.name === "Document"
-              ? documentSupportedFormats
-              : selectedType?.supportedFormat || []
+            selectedType?.supportedFormat || []
           }
           selectedConversionFormat={selectedConversionFormat}
           setSelectedConversionFormat={setSelectedConversionFormat}
@@ -452,30 +441,17 @@ function ConvertStep({
               tabIndex={-1}
               className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm"
             >
-              {useFileType !== "Document"
-                ? supportedFormats.map((format) => {
-                    if (format.toLowerCase() === currentFormat.toLowerCase()) {
-                      return null;
-                    }
-                    return (
-                      <li
-                        key={format}
-                        onClick={() => setSelectedConversionFormat(format)}
-                      >
-                        <a>{format}</a>
-                      </li>
-                    );
-                  })
-                : documentSupportedFormatsRaw[currentFormat].map((format) => {
-                    return (
-                      <li
-                        key={format}
-                        onClick={() => setSelectedConversionFormat(format)}
-                      >
-                        <a>{format}</a>
-                      </li>
-                    );
-                  })}
+              {
+                getSupportedFormatsRaw(useFileType)[currentFormat].map((format) => {
+                  return (
+                    <li
+                      key={format}
+                      onClick={() => setSelectedConversionFormat(format)}
+                    >
+                      <a>{format}</a>
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         </div>

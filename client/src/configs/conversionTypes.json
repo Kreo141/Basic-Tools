@@ -1,22 +1,53 @@
 [
     {
-        "name" : "Image",
-        "logoSrc" : "https://img.icons8.com/sf-regular-filled/1200/image.jpg",
-        "supportedFormat" : ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tif", "tiff", "ico", "heic", "avif"]
+        "name": "Image",
+        "supportedFormat": {
+            "jpg":  ["jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "ico", "heic", "avif"],
+            "jpeg": ["jpg", "png", "gif", "webp", "bmp", "tif", "tiff", "ico", "heic", "avif"],
+            "png":  ["jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff", "ico", "heic", "avif"],
+            "gif":  ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff", "ico", "heic", "avif"],
+            "webp": ["jpg", "jpeg", "png", "gif", "bmp", "tif", "tiff", "ico", "heic", "avif"],
+            "bmp":  ["jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "ico", "heic", "avif"],
+            "tif":  ["jpg", "jpeg", "png", "gif", "webp", "bmp", "ico", "heic", "avif"],
+            "tiff": ["jpg", "jpeg", "png", "gif", "webp", "bmp", "ico", "heic", "avif"],
+            "ico":  ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "heic", "avif"],
+            "heic": ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "ico", "avif"],
+            "avif": ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "ico", "heic"],
+            "svg":  ["png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff", "ico"]
+        }
     },
     {
-        "name" : "Video",
-        "logoSrc" : "https://png.pngtree.com/png-vector/20250831/ourmid/pngtree-flat-clapperboard-video-icon-black-and-white-striped-top-with-simple-png-image_17345655.webp",
-        "supportedFormat" : ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"]
+        "name": "Video",
+        "supportedFormat": {
+            "mp4":  ["mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"],
+            "mov":  ["mp4", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"],
+            "avi":  ["mp4", "mov", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"],
+            "mkv":  ["mp4", "mov", "avi", "webm", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"],
+            "webm": ["mp4", "mov", "avi", "mkv", "flv", "wmv", "m4v", "mpg", "mpeg", "3gp"],
+            "flv":  ["mp4", "mov", "avi", "mkv", "webm", "wmv", "m4v", "mpg", "mpeg", "3gp"],
+            "wmv":  ["mp4", "mov", "avi", "mkv", "webm", "flv", "m4v", "mpg", "mpeg", "3gp"],
+            "m4v":  ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "mpg", "mpeg", "3gp"],
+            "mpg":  ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpeg", "3gp"],
+            "mpeg": ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "3gp"],
+            "3gp": ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "mpg", "mpeg"]
+        }
     },
     {
         "name" : "Audio",
-        "logoSrc" : "https://upload.wikimedia.org/wikipedia/commons/2/21/Speaker_Icon.svg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original",
-        "supportedFormat" : ["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma", "opus", "amr"]
+        "supportedFormat": {
+            "mp3": ["wav", "ogg", "flac", "aac", "m4a", "wma", "opus", "amr"],
+            "wav": ["mp3", "ogg", "flac", "aac", "m4a", "wma", "opus", "amr"],
+            "ogg": ["mp3", "wav", "flac", "aac", "m4a", "wma", "opus", "amr"],
+            "flac": ["mp3", "wav", "ogg", "aac", "m4a", "wma", "opus", "amr"],
+            "aac": ["mp3", "wav", "ogg", "flac", "m4a", "wma", "opus", "amr"],
+            "m4a": ["mp3", "wav", "ogg", "flac", "aac", "wma", "opus", "amr"],
+            "wma": ["mp3", "wav", "ogg", "flac", "aac", "m4a", "opus", "amr"],
+            "opus": ["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma", "amr"],
+            "amr": ["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma", "opus"]
+        }
     },
     {
         "name" : "Document",
-        "logoSrc" : "./assets/icons/DocumentIcon.svg",
         "supportedFormat" : {
             "docx": ["pdf", "doc", "odt", "rtf", "txt", "html", "epub"],
             "doc": ["pdf", "docx", "odt", "rtf", "txt", "html"],
