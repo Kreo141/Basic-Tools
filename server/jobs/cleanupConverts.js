@@ -45,9 +45,14 @@ async function start(){
                 //used for of in this because forEach does not wait for async operations
                 for(const filename of filenames){
                     if(Date.now() - convertsJsonObject[filename].age > hourExpiry){
-                        console.log("File Deleted")
+                        console.log("cleanupConverts.js: File Deleted")
                         delete convertsJsonObject[filename]
-                        await fsSync.unlink(path.join(convertedFilePath, filename))
+                        try{
+                            await fsSync.unlink(path.join(convertedFilePath, filename))
+                        } catch(error){
+                            console.error("cleanupConverts.js: " + error)
+                        }
+                        
                         hasChanges = true
                     }
                 }

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { BrowserRouter, Routes, Route, Link, NavLink, useLocation} from "react-router-dom"
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faX, faCloud, faRightLong } from "@fortawesome/free-solid-svg-icons";
+import { faX, faCloud, faRightLong, faTrash, faDownload } from "@fortawesome/free-solid-svg-icons";
 
 import { uploadFileService } from "./services/uploadFileService.js";
 import conversionTypes from "./configs/conversionTypes.json";
@@ -28,12 +29,6 @@ const getFileExtension = (filename) => {
     .toLowerCase();
 };
 
-const documentSupportedFormatsRaw = conversionTypes.find(
-  (item) => item.name === "Document",
-).supportedFormat;
-
-const documentSupportedFormats = Object.keys(documentSupportedFormatsRaw);
-
 const getSupportedFormatsRaw = (fileType) => {
     const fileSupportedFormatsRaw = conversionTypes.find(
         (item) => item.name === fileType
@@ -44,13 +39,12 @@ const getSupportedFormatsRaw = (fileType) => {
 
 const getSupportedFormats = (fileType) => Object.keys(getSupportedFormatsRaw(fileType))
 
-
 const serverDev = "http://192.168.100.12:5001";
 const serverProd = "http://server:5001";
 const serverLocation = true ? serverDev : serverProd;
 
 // ==========================================
-// MAIN CONTAINER
+// FILE CONVERTER CONTAINER
 // ==========================================
 function FileConverter({ UserKey }) {
   const [showFileModal, setShowFileModal] = useState(false);
@@ -481,12 +475,125 @@ function ConvertStep({
   );
 }
 
+// ==========================================
+// HISTORY CONTAINER
+// ==========================================
+
+function ConvertHistory({UserKey}){
+  const [loading, setLoading] = useState(true)
+  const [converts, setConverts] = useState({})
+
+  // helpers
+  const downloadConvertedFile = (UserKey, filename) => {
+    const link = document.createElement("a")
+    link.href = `${serverLocation}/convert/history/download/${encodeURIComponent(UserKey)}/${encodeURIComponent(filename)}`;
+
+    link.setAttribute("download", "")
+
+    document.body.appendChild(link)
+    link.click()
+
+    document.body.removeChild(link)
+  }
+  
+  useEffect(() => {
+    async function fetchConverts() {
+      try{
+        setLoading(true)
+
+        const response = await fetch(`${serverLocation}/convert/history/${UserKey}`)
+
+        if(!response.ok){
+          console.error(`HTTP error! Status: ${response.status}`)
+          throw new Error(`HTTP error! Status: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        setConverts(data.converts)
+        setLoading(false)
+      } catch(error){
+        setLoading(false)
+      }
+    }
+
+    fetchConverts()
+  }, [])
+
+  return(
+    <div className="page history-container">
+      {loading ? (
+        <span className="loading loading-spinner text-neutral"></span>
+      ) : Object.keys(converts).length === 0 ? (
+        <h1>No convert history</h1>
+      ) : (
+        Object.keys(converts).map(item => (
+          <div className="convert-item" key={item}>
+            <div className="convert-item-info">
+              <h1 className="converted-filename">{item}</h1>
+              <p>
+                Expires on{" "}
+                <span style={{ fontWeight: "bold" }}>
+                  {converts[item].age}
+                </span>
+              </p>
+            </div>
+
+            <div className="convert-item-operation">
+              <FontAwesomeIcon
+                className="Delete converted-delete-btn"
+                icon={faTrash}
+              />
+
+              <FontAwesomeIcon
+                className="Download converted-download-btn"
+                icon={faDownload}
+                onClick={() =>
+                  downloadConvertedFile(converts[item].OwnerKey, item)
+                }
+              />
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+function AppContent({ UserKey }) {
+  const location = useLocation();
+
+  return (
+    <>
+      <div className="nav">
+        <div className="nav-inner">
+          <div className="logo-container">
+            <img className="logo-icon" alt="logo" />
+            <Link className="logo-label" to="/">Converthings</Link>
+          </div>
+        </div>
+
+        <Link to={location.pathname !== "/history" ? "/history" : "/"}>
+          <button className="history-btn">
+            {location.pathname !== "/history" ? "History" : "Home"}
+          </button>
+        </Link>
+      </div>
+
+      <Routes>
+        <Route path="/" element={<FileConverter UserKey={UserKey} />} />
+        <Route path="/history" element={<ConvertHistory UserKey={UserKey} />} />
+        <Route path="*" element={<FileConverter UserKey={UserKey} />} />
+      </Routes>
+    </>
+  );
+}
+
 function App() {
   const generateUUID = () => {
-  if (crypto?.randomUUID) {
-    return crypto.randomUUID();
-  }
-    // Fallback for non-secure
+    if (crypto?.randomUUID) {
+      return crypto.randomUUID();
+    }
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
@@ -501,21 +608,11 @@ function App() {
       return id;
     })();
 
-  return(
-    <>
-      <div className="nav">
-        <div className="nav-inner">
-          <div className="logo-container">
-            <img className="logo-icon"></img>
-            <a className="logo-label" href="/">Converthings</a>
-          </div>
-        </div>
-
-        <button className="settings-btn">Settings</button>
-      </div>
-      <FileConverter UserKey={UserKey} />
-    </>
-  )
+  return (
+    <BrowserRouter>
+      <AppContent UserKey={UserKey} />
+    </BrowserRouter>
+  );
 }
 
 export default App;

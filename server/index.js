@@ -271,7 +271,7 @@ app.post('/convert/Document', (req, res) => {
                 })
             }
             
-            console.log("File Converted")
+            console.log("index.js:\tDocument File Converted")
             const slice = fileID.split('.')
             const newFileName = `${slice[0]}.${toConvertTo}`
             
@@ -345,12 +345,68 @@ app.get('/convert/deleteOriginalFile/:convertKey', (req, res) => {
             return
         }
 
-        console.log("Original File Deleted")
+        console.log("index.js:\tOriginal File Deleted")
     })
 })
+
+app.get('/convert/history/:UserKey', async (req, res) => { console.log("index.js:\tHistory Fetchs")
+    const UserKey = req.params.UserKey
+
+    const convertsRaw = await fsSync.readFile(convertsJsonPath, "utf8")
+    const convertsJsonObject = await JSON.parse(convertsRaw)
+
+    const result = {}
+
+    const filenames = Object.keys(convertsJsonObject)
+    for(let filename of filenames){
+        if(convertsJsonObject[filename].OwnerKey === UserKey) result[filename] = {"OwnerKey": convertsJsonObject[filename].OwnerKey, "age": convertsJsonObject[filename].age}
+    }
+
+    console.log(result)
+    res.json({
+        success: true,
+        converts: result
+    })
+})
+
+app.get('/convert/history/download/:UserKey/:filename', async (req, res) => {
+    const { UserKey, filename } = req.params;
+
+    const convertsRaw = await fsSync.readFile(convertsJsonPath, "utf8");
+    const convertsJsonObject = JSON.parse(convertsRaw);
+
+    if (!convertsJsonObject[filename]) {
+        return res.status(404).json({
+            success: false,
+            message: "File record not found"
+        });
+    }
+
+    if (convertsJsonObject[filename].OwnerKey !== UserKey) {
+        return res.status(403).json({
+            success: false,
+            message: "Invalid key for the file"
+        });
+    }
+
+    const filepath = path.join(__dirname, "uploads", "converted", filename);
+
+    if (!fs.existsSync(filepath)) {
+        return res.status(404).json({
+            success: false,
+            message: "Converted file not found"
+        });
+    }
+
+    res.download(filepath, (err) => {
+        if (err) {
+            console.error(err);
+        }
+    });
+});
 
 const PORT = appConfig.PORT
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running on 0.0.0.0:${PORT}`)
+    console.log(`index.js:\tServer is running on 0.0.0.0:${PORT}`)
 })
