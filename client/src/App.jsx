@@ -37,6 +37,18 @@ const getSupportedFormatsRaw = (fileType) => {
     return fileSupportedFormatsRaw
 }
 
+const downloadConvertedFile = (UserKey, filename) => {
+    const link = document.createElement("a")
+    link.href = `${serverLocation}/convert/history/download/${encodeURIComponent(UserKey)}/${encodeURIComponent(filename)}`;
+
+    link.setAttribute("download", "")
+
+    document.body.appendChild(link)
+    link.click()
+
+    document.body.removeChild(link)
+}
+
 const getSupportedFormats = (fileType) => Object.keys(getSupportedFormatsRaw(fileType))
 
 const serverDev = "http://192.168.100.12:5001";
@@ -119,6 +131,7 @@ function FileTypeSelect({ fileType, supportedFormat, onSelect }) {
 // ==========================================
 function ModalController({ UserKey, useFileType, onClose }) {
   const convertKey = useRef(null);
+  const converted_filename = useRef(null)
   const [selectedFile, setSelectedFile] = useState(null);
   const [currentFormat, setCurrentFormat] = useState("");
 
@@ -214,7 +227,7 @@ function ModalController({ UserKey, useFileType, onClose }) {
       }
 
       const data = await req.json();
-      await setConvertedFileID(data.convertedFileID);
+      converted_filename.current = data.converted_filename;
     } catch (error) {
       console.error("Conversion triggering failed:", error);
       setIsConverting(false);
@@ -227,18 +240,6 @@ function ModalController({ UserKey, useFileType, onClose }) {
     setTimeout(() => {
       setIsShowErrorAlert(false);
     }, 2000);
-  }
-
-  const downloadConvertedFile = () => {
-    const link = document.createElement("a")
-    link.href = `${serverLocation}/convert/download/${convertKey.current}`;
-
-    link.setAttribute("download", "")
-
-    document.body.appendChild(link)
-    link.click()
-
-    document.body.removeChild(link)
   }
   
   const deleteUploadedFile = () => {
@@ -280,7 +281,7 @@ function ModalController({ UserKey, useFileType, onClose }) {
           setSelectedConversionFormat={setSelectedConversionFormat}
           convertProgress={convertProgress}
           convertedFileID={convertedFileID}
-          downloadConvertedFile={downloadConvertedFile}
+          downloadConvertedFile={() => downloadConvertedFile(UserKey, converted_filename.current)}
           isConverting={isConverting}
           onConvert={handleConversion}
           onClose={ () => {
@@ -482,19 +483,6 @@ function ConvertStep({
 function ConvertHistory({UserKey}){
   const [loading, setLoading] = useState(true)
   const [converts, setConverts] = useState({})
-
-  // helpers
-  const downloadConvertedFile = (UserKey, filename) => {
-    const link = document.createElement("a")
-    link.href = `${serverLocation}/convert/history/download/${encodeURIComponent(UserKey)}/${encodeURIComponent(filename)}`;
-
-    link.setAttribute("download", "")
-
-    document.body.appendChild(link)
-    link.click()
-
-    document.body.removeChild(link)
-  }
   
   useEffect(() => {
     async function fetchConverts() {

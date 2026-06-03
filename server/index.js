@@ -235,14 +235,16 @@ app.post('/convert/Image', (req, res) => {
                 })
             }
 
+            const converted_filename = `${fileID}.${toConvertTo}`
+
             conversionTask[convertKey].progress = 100
-            conversionTask[convertKey].convertedFileID = `${fileID}.${toConvertTo}`
+            conversionTask[convertKey].convertedFileID = converted_filename
 
             const rawConvertsData = await fsSync.readFile(convertsJsonPath, 'utf8')
 
             const convertsJsonObject = JSON.parse(rawConvertsData)
 
-            convertsJsonObject[`${fileID}.${toConvertTo}`] = {
+            convertsJsonObject[converted_filename] = {
                 "OwnerKey": OwnerKey,
                 "age": Date.now()
             }
@@ -250,7 +252,8 @@ app.post('/convert/Image', (req, res) => {
             await fsSync.writeFile(convertsJsonPath, JSON.stringify(convertsJsonObject, null, 2), 'utf8')
 
             res.json({
-                message: "File Converted"
+                message: "File Converted",
+                converted_filename: converted_filename
             })
         }
     )
@@ -297,12 +300,24 @@ app.post('/convert/Document', (req, res) => {
 
 //* Polling
 app.get('/convert/progress/:convertKey', (req, res) => {
-    const fileID = conversionTask[req.params.convertKey].convertedFileID
+    const task = conversionTask[req.params.convertKey];
+
+    if (!task) {
+        return res.status(404).json({
+            error: "Task not found"
+        });
+    }
 
     res.json({
-        progress: conversionTask[req.params.convertKey].progress ? conversionTask[req.params.convertKey].progress : -1
-    })
-})
+        progress: task.progress ?? -1
+    });
+
+    if (task.progress === 100) {
+        setTimeout(() => {
+            delete conversionTask[req.params.convertKey];
+        }, 5 * 60 * 1000);
+    }
+});
 
 app.use(express.static(path.join(__dirname, 'public')))
 
