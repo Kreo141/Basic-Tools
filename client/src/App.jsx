@@ -21,6 +21,8 @@ const FileIcons = {
   Document: DocumentIcon
 }
 
+let hourExpiry = null
+
 // HELPER/s
 const getFileExtension = (filename) => {
   if (!filename) return "";
@@ -50,6 +52,23 @@ const downloadConvertedFile = (UserKey, filename) => {
 }
 
 const getSupportedFormats = (fileType) => Object.keys(getSupportedFormatsRaw(fileType))
+
+const getRemainingTime = (time) => {
+  const targetTime = time + (60 * 60 * hourExpiry)
+
+  const remainingMs = targetTime - Date.now()
+
+  if (remainingMs <= 0) {
+    return 0;
+  } else {
+      const seconds = Math.floor(remainingMs / 1000) % 60;
+      const minutes = Math.floor(remainingMs / (1000 * 60)) % 60;
+      const hours = Math.floor(remainingMs / (1000 * 60 * 60)) % 24;
+      const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+
+      return (`${days}d ${hours}h ${minutes}m ${seconds}s`);
+  }
+}
 
 const serverDev = "http://192.168.100.12:5001";
 const serverProd = "http://server:5001";
@@ -522,7 +541,7 @@ function ConvertHistory({UserKey}){
               <p>
                 Expires on{" "}
                 <span style={{ fontWeight: "bold" }}>
-                  {converts[item].age}
+                  {getRemainingTime(converts[item].age)}
                 </span>
               </p>
             </div>
@@ -532,7 +551,6 @@ function ConvertHistory({UserKey}){
                 className="Delete converted-delete-btn"
                 icon={faTrash}
               />
-
               <FontAwesomeIcon
                 className="Download converted-download-btn"
                 icon={faDownload}
@@ -578,6 +596,20 @@ function AppContent({ UserKey }) {
 }
 
 function App() {
+  useEffect(() => {
+    async function fetchExpiry() {
+      try {
+        const req = await fetch(`${serverLocation}/config/hourExpiry/`); // Don't forget your server URL prefix!
+        const data = await req.json();
+        
+        hourExpiry = data.hourExpiry
+      } catch(e) {
+        console.error(e);
+      }
+    }
+    fetchExpiry();
+  }, []);
+
   const generateUUID = () => {
     if (crypto?.randomUUID) {
       return crypto.randomUUID();
