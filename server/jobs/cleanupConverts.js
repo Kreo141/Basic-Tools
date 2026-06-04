@@ -31,28 +31,35 @@ async function start(){
         if(intervalRunning) return
         intervalRunning = true
 
-        if(await hasFileChanged()){ console.log("cleanupConverts.js: Actively Monitoring Expired file/s")
             try{
                 const convertsRaw = await fsSync.readFile(convertsJsonPath, 'utf8')
                 const convertsJsonObject = JSON.parse(convertsRaw)
 
                 if(Object.keys(convertsJsonObject).length === 0) {
                     console.log("There's no file to monitor")
+                    return
                 }
 
-                const filenames = Object.keys(convertsJsonObject)
-
                 //used for of in this because forEach does not wait for async operations
-                for(const filename of filenames){
-                    if(Date.now() - convertsJsonObject[filename].age > hourExpiry){
-                        console.log("cleanupConverts.js: File Deleted")
-                        delete convertsJsonObject[filename]
-                        try{
-                            await fsSync.unlink(path.join(convertedFilePath, filename))
-                        } catch(error){
-                            console.error("cleanupConverts.js: " + error)
+                for (const ownerKey of Object.keys(convertsJsonObject)) {
+                    const files = convertsJsonObject[ownerKey]
+
+                    for (const filename of Object.keys(files)) {
+                        if (Date.now() - files[filename].age > hourExpiry) {
+                            console.log("cleanupConverts.js: File Deleted:", filename)
+                            delete files[filename]
+                            try {
+                                await fsSync.unlink(path.join(convertedFilePath, filename))
+                            } catch (error) {
+                                console.error("cleanupConverts.js: " + error)
+                            }
+                            hasChanges = true
                         }
-                        
+                    }
+
+                    // clean up empty owner buckets
+                    if (Object.keys(convertsJsonObject[ownerKey]).length === 0) {
+                        delete convertsJsonObject[ownerKey]
                         hasChanges = true
                     }
                 }
@@ -67,7 +74,6 @@ async function start(){
             } finally {
                 intervalRunning = false
             }
-        }
 
     }, appConfigJsonObject.GlobalJobInterval)
 }

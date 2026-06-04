@@ -54,7 +54,7 @@
             "rtf":  ["pdf", "docx","odt", "txt",  "html"],
             "txt":  ["pdf", "docx","odt", "rtf",  "html"],
             "html": ["pdf", "docx","odt", "txt"],
-            "pptx": ["pdf", "odp"],
+            "pptx": ["pdf", "odp", "ppt"],
             "ppt":  ["pdf", "odp", "pptx"],
             "odp":  ["pdf", "pptx"],
             "xlsx": ["pdf", "ods", "csv"],

@@ -41,7 +41,7 @@ const getSupportedFormatsRaw = (fileType) => {
 
 const downloadConvertedFile = (UserKey, filename) => {
     const link = document.createElement("a")
-    link.href = `${serverLocation}/convert/history/download/${encodeURIComponent(UserKey)}/${encodeURIComponent(filename)}`;
+    link.href = `${serverLocation}/convert/download/${encodeURIComponent(UserKey)}/${encodeURIComponent(filename)}`;
 
     link.setAttribute("download", "")
 
@@ -260,14 +260,6 @@ function ModalController({ UserKey, useFileType, onClose }) {
       setIsShowErrorAlert(false);
     }, 2000);
   }
-  
-  const deleteUploadedFile = () => {
-    try{
-      fetch(`${serverLocation}/convert/deleteOriginalFile/${convertKey.current}`)
-    } catch(error){
-      console.error(error)
-    }
-  }
 
   return (
     <div className="upload-file-modal-container">
@@ -305,7 +297,6 @@ function ModalController({ UserKey, useFileType, onClose }) {
           onConvert={handleConversion}
           onClose={ () => {
             onClose()
-            deleteUploadedFile()
           }}
         />
       )}

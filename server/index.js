@@ -44,9 +44,14 @@ for (const dir of [uploadDir, convertedDir]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 }
 
+// Store with a UUID filename on disk to avoid any name collisions
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, uploadDir),
-    filename:    (_req, file,  cb) => cb(null, Date.now() + path.extname(file.originalname))
+    filename:    (_req, file,  cb) => {
+        const ext      = path.extname(file.originalname)   // e.g. ".mp4"
+        const uuidName = crypto.randomUUID() + ext         // e.g. "a1b2-....mp4"
+        cb(null, uuidName)
+    }
 })
 
 const upload = multer({ storage })
@@ -164,11 +169,20 @@ function inputFormat(ext) {
 
 /**
  * Persist a completed conversion record to converts.json.
+ * originalName  – the display name the user will see / download as
+ * serverFilename – the UUID filename actually stored on disk
  */
-async function recordConversion(filename, OwnerKey) {
+async function recordConversion(originalName, serverFilename, OwnerKey) {
     const raw  = await fsSync.readFile(convertsJsonPath, 'utf8')
     const data = JSON.parse(raw)
-    data[filename] = { OwnerKey, age: Date.now() }
+    if (!data[OwnerKey]) data[OwnerKey] = {}
+
+    // Key = friendly display name; value holds the real on-disk UUID name
+    data[OwnerKey][originalName] = {
+        nameInServer: serverFilename,
+        age:          Date.now()
+    }
+
     await fsSync.writeFile(convertsJsonPath, JSON.stringify(data, null, 2), 'utf8')
 }
 
@@ -180,7 +194,12 @@ app.post('/convert/upload', upload.single('file'), (req, res) => {
     console.log('File received:', req.file)
 
     const newConvertKey = crypto.randomBytes(32).toString('hex')
-    conversionTask[newConvertKey] = { fileID: req.file.filename, convertedFileID: null, progress: 0 }
+    conversionTask[newConvertKey] = {
+        fileID:          req.file.filename,      // UUID name on disk  e.g. "abc123.mp4"
+        originalName:    req.file.originalname,  // display name       e.g. "my video.mp4"
+        convertedFileID: null,
+        progress:        0
+    }
 
     res.json({
         message:      'File received for conversion',
@@ -192,28 +211,28 @@ app.post('/convert/upload', upload.single('file'), (req, res) => {
 
 //  Video conversion
 app.post('/convert/Video', (req, res) => {
-    console.log('Video conversion request')
-
     const { convertKey, originalFormat, toConvertTo, OwnerKey } = req.body
     const task = conversionTask[convertKey]
 
     if (!task) return res.status(404).json({ error: 'Invalid convertKey' })
 
-    const { fileID }    = task
-    const preset        = videoPresets[toConvertTo]
+    const { fileID, originalName } = task
+    const preset = videoPresets[toConvertTo]
 
     if (!preset) {
         return res.status(400).json({ error: `Unsupported output video format: ${toConvertTo}` })
     }
 
-    const inputPath  = path.join(uploadDir, fileID)
-    const outputPath = path.join(convertedDir, `${fileID}.${toConvertTo}`)
-    const srcExt     = path.extname(fileID).replace('.', '')
+    // Display name shown to user / used as download filename
+    const displayName    = path.basename(originalName, path.extname(originalName)) + '.' + toConvertTo
+    // UUID name actually written to disk — no collisions possible
+    const serverFilename = crypto.randomUUID() + '.' + toConvertTo
+    const inputPath      = path.join(uploadDir, fileID)
+    const outputPath     = path.join(convertedDir, serverFilename)
+    const srcExt         = path.extname(fileID).replace('.', '')
 
     ffmpeg()
         .input(inputPath)
-        // Provide an explicit demuxer so formats like m4v are read correctly.
-        // Use the caller-supplied originalFormat if given; otherwise derive from the file extension.
         .inputFormat(inputFormat(originalFormat || srcExt))
         .output(outputPath)
         .videoCodec(preset.videoCodec)
@@ -227,18 +246,15 @@ app.post('/convert/Video', (req, res) => {
         .on('end', async () => {
             console.log('Video conversion done')
             task.progress        = 100
-            task.convertedFileID = `${fileID}.${toConvertTo}`
+            task.convertedFileID = serverFilename
 
-            await recordConversion(`${fileID}.${toConvertTo}`, OwnerKey)
-            res.json({ message: 'File converted!', converted_filename: `${fileID}.${toConvertTo}` })
+            await recordConversion(displayName, serverFilename, OwnerKey)
+            res.json({ message: 'File converted!', converted_filename: displayName })
         })
         .on('error', (err, _stdout, stderr) => {
             console.error('FFmpeg video error:', err.message)
             console.error('FFmpeg stderr:', stderr)
-
-            if (!res.headersSent) {
-                res.status(500).json({ error: err.message, detail: stderr })
-            }
+            if (!res.headersSent) res.status(500).json({ error: err.message, detail: stderr })
         })
         .run()
 })
@@ -246,29 +262,31 @@ app.post('/convert/Video', (req, res) => {
 
 //  Audio conversion
 app.post('/convert/Audio', (req, res) => {
-    console.log('Audio conversion request')
-
     const { convertKey, originalFormat, toConvertTo, OwnerKey } = req.body
     const task = conversionTask[convertKey]
 
     if (!task) return res.status(404).json({ error: 'Invalid convertKey' })
 
-    const { fileID } = task
-    const preset     = audioPresets[toConvertTo]
+    const { fileID, originalName } = task
+    const preset = audioPresets[toConvertTo]
 
     if (!preset) {
         return res.status(400).json({ error: `Unsupported output audio format: ${toConvertTo}` })
     }
 
-    const inputPath  = path.join(uploadDir, fileID)
-    const outputPath = path.join(convertedDir, `${fileID}.${toConvertTo}`)
-    const srcExt     = path.extname(fileID).replace('.', '')
+    // Display name shown to user / used as download filename
+    const displayName    = path.basename(originalName, path.extname(originalName)) + '.' + toConvertTo
+    // UUID name actually written to disk — no collisions possible
+    const serverFilename = crypto.randomUUID() + '.' + toConvertTo
+    const inputPath      = path.join(uploadDir, fileID)
+    const outputPath     = path.join(convertedDir, serverFilename)
+    const srcExt         = path.extname(fileID).replace('.', '')
 
     ffmpeg()
         .input(inputPath)
         .inputFormat(inputFormat(originalFormat || srcExt))
         .output(outputPath)
-        .noVideo()                          // Strip any video stream — pure audio output
+        .noVideo()
         .audioCodec(preset.audioCodec)
         .outputOptions(preset.outputOptions || [])
         .on('start', cmd  => console.log('FFmpeg started:', cmd))
@@ -279,18 +297,15 @@ app.post('/convert/Audio', (req, res) => {
         .on('end', async () => {
             console.log('Audio conversion done')
             task.progress        = 100
-            task.convertedFileID = `${fileID}.${toConvertTo}`
+            task.convertedFileID = serverFilename
 
-            await recordConversion(`${fileID}.${toConvertTo}`, OwnerKey)
-            res.json({ message: 'File converted!', converted_filename: `${fileID}.${toConvertTo}` })
+            await recordConversion(displayName, serverFilename, OwnerKey)
+            res.json({ message: 'File converted!', converted_filename: displayName })
         })
         .on('error', (err, _stdout, stderr) => {
             console.error('FFmpeg audio error:', err.message)
             console.error('FFmpeg stderr:', stderr)
-
-            if (!res.headersSent) {
-                res.status(500).json({ error: err.message, detail: stderr })
-            }
+            if (!res.headersSent) res.status(500).json({ error: err.message, detail: stderr })
         })
         .run()
 })
@@ -305,10 +320,13 @@ app.post('/convert/Image', (req, res) => {
 
     if (!task) return res.status(404).json({ error: 'Invalid convertKey' })
 
-    const { fileID }        = task
-    const convertedFilename = `${fileID}.${toConvertTo}`
-    const inputPath         = path.join(uploadDir, fileID)
-    const outputPath        = path.join(convertedDir, convertedFilename)
+    const { fileID, originalName } = task
+
+    // Strip the original extension properly — fixes the double-ext bug (e.g. photo.png.webp)
+    const displayName    = path.basename(originalName, path.extname(originalName)) + '.' + toConvertTo
+    const serverFilename = crypto.randomUUID() + '.' + toConvertTo
+    const inputPath      = path.join(uploadDir, fileID)
+    const outputPath     = path.join(convertedDir, serverFilename)
 
     exec(`${magickCmd} "${inputPath}" "${outputPath}"`, async (error) => {
         if (error) {
@@ -317,10 +335,10 @@ app.post('/convert/Image', (req, res) => {
         }
 
         task.progress        = 100
-        task.convertedFileID = convertedFilename
+        task.convertedFileID = serverFilename
 
-        await recordConversion(convertedFilename, OwnerKey)
-        res.json({ message: 'File converted', converted_filename: convertedFilename })
+        await recordConversion(displayName, serverFilename, OwnerKey)
+        res.json({ message: 'File converted', converted_filename: displayName })
     })
 })
 
@@ -334,8 +352,8 @@ app.post('/convert/Document', (req, res) => {
 
     if (!task) return res.status(404).json({ error: 'Invalid convertKey' })
 
-    const { fileID } = task
-    const inputPath  = path.join(uploadDir, fileID)
+    const { fileID, originalName } = task
+    const inputPath = path.join(uploadDir, fileID)
 
     exec(
         `"${libreofficeLocation}${sofficeCmd}" --headless --convert-to ${toConvertTo} --outdir "${convertedDir}" "${inputPath}"`,
@@ -346,14 +364,17 @@ app.post('/convert/Document', (req, res) => {
             }
 
             console.log('Document converted')
-            const baseName       = path.basename(fileID, path.extname(fileID))
-            const newFileName    = `${baseName}.${toConvertTo}`
+
+            // LibreOffice names its output after the input file (the UUID), so derive that name
+            const serverFilename = path.basename(fileID, path.extname(fileID)) + '.' + toConvertTo
+            // Friendly name the user sees
+            const displayName    = path.basename(originalName, path.extname(originalName)) + '.' + toConvertTo
 
             task.progress        = 100
-            task.convertedFileID = newFileName
+            task.convertedFileID = serverFilename
 
-            await recordConversion(`${fileID}.${toConvertTo}`, OwnerKey)
-            res.json({ message: 'File converted!' })
+            await recordConversion(displayName, serverFilename, OwnerKey)
+            res.json({ message: 'File converted!', converted_filename: displayName })
         }
     )
 })
@@ -377,24 +398,6 @@ app.get('/convert/progress/:convertKey', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')))
 
 
-//  Download converted file
-app.get('/convert/download/:convertKey', (req, res) => {
-    const task = conversionTask[req.params.convertKey]
-
-    if (!task) return res.status(404).json({ message: 'Invalid key' })
-
-    const filePath = path.join(convertedDir, task.convertedFileID)
-
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: 'Converted file not found', key: req.params.convertKey })
-    }
-
-    res.download(filePath, (err) => {
-        if (err) { console.error(err); res.status(500).send('File download failed') }
-    })
-})
-
-
 //  Delete original after download
 app.get('/convert/deleteOriginalFile/:convertKey', (req, res) => {
     const task = conversionTask[req.params.convertKey]
@@ -409,40 +412,38 @@ app.get('/convert/deleteOriginalFile/:convertKey', (req, res) => {
 })
 
 
-// History 
+// History
 app.get('/convert/history/:UserKey', async (req, res) => {
-    console.log('History fetch')
     const { UserKey } = req.params
-
-    const raw    = await fsSync.readFile(convertsJsonPath, 'utf8')
-    const data   = JSON.parse(raw)
-    const result = {}
-
-    for (const filename of Object.keys(data)) {
-        if (data[filename].OwnerKey === UserKey) {
-            result[filename] = { OwnerKey: data[filename].OwnerKey, age: data[filename].age }
-        }
-    }
-
-    res.json({ success: true, converts: result })
-})
-
-
-// History download 
-app.get('/convert/history/download/:UserKey/:filename', async (req, res) => {
-    const { UserKey, filename } = req.params
 
     const raw  = await fsSync.readFile(convertsJsonPath, 'utf8')
     const data = JSON.parse(raw)
 
-    if (!data[filename])                       return res.status(404).json({ success: false, message: 'File record not found' })
-    if (data[filename].OwnerKey !== UserKey)   return res.status(403).json({ success: false, message: 'Invalid key for the file' })
+    const userConverts = data[UserKey] ?? {}
 
-    const filepath = path.join(__dirname, 'uploads', 'converted', filename)
+    res.json({ success: true, converts: userConverts })
+})
 
-    if (!fs.existsSync(filepath)) return res.status(404).json({ success: false, message: 'Converted file not found' })
 
-    res.download(filepath, (err) => { if (err) console.error(err) })
+// History download
+app.get('/convert/download/:UserKey/:filename', async (req, res) => {
+    const { UserKey, filename } = req.params   // filename = display name
+
+    console.log('DOWNLOAD:', filename)
+
+    const raw  = await fsSync.readFile(convertsJsonPath, 'utf8')
+    const data = JSON.parse(raw)
+
+    if (!data[UserKey])              return res.status(403).json({ success: false, message: 'Invalid key' })
+    const record = data[UserKey][filename]
+    if (!record)                     return res.status(404).json({ success: false, message: 'File record not found' })
+
+    const filepath = path.join(__dirname, 'uploads', 'converted', record.nameInServer)
+
+    if (!fs.existsSync(filepath))    return res.status(404).json({ success: false, message: 'Converted file not found' })
+
+    // Second arg renames the file for the browser — user gets the friendly display name
+    res.download(filepath, filename, (err) => { if (err) console.error(err) })
 })
 
 
